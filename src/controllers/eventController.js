@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Event = require('../models/Event');
+const Registration = require('../models/Registration');
 
 const eventFields = ['title', 'description', 'date', 'location', 'capacity'];
 
@@ -94,10 +95,7 @@ const updateEvent = async (req, res) => {
   }
 
   try {
-    const event = await Event.findByIdAndUpdate(req.params.id, eventData, {
-      new: true,
-      runValidators: true,
-    });
+    const event = await Event.findById(req.params.id);
 
     if (!event) {
       return res.status(404).json({
@@ -105,9 +103,28 @@ const updateEvent = async (req, res) => {
       });
     }
 
+    if (eventData.capacity !== undefined) {
+      const requestedCapacity = Number(eventData.capacity);
+
+      if (Number.isInteger(requestedCapacity) && requestedCapacity >= 1) {
+        const registrationCount = await Registration.countDocuments({ event: event._id });
+
+        if (requestedCapacity < registrationCount) {
+          return res.status(409).json({
+            message: 'Event capacity cannot be lower than the current registration count.',
+          });
+        }
+      }
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(req.params.id, eventData, {
+      new: true,
+      runValidators: true,
+    });
+
     return res.status(200).json({
       message: 'Event updated successfully.',
-      event,
+      event: updatedEvent,
     });
   } catch (error) {
     return sendErrorResponse(res, error);
@@ -122,13 +139,23 @@ const deleteEvent = async (req, res) => {
   }
 
   try {
-    const event = await Event.findByIdAndDelete(req.params.id);
+    const event = await Event.findById(req.params.id);
 
     if (!event) {
       return res.status(404).json({
         message: 'Event not found.',
       });
     }
+
+    const hasRegistrations = await Registration.exists({ event: event._id });
+
+    if (hasRegistrations) {
+      return res.status(409).json({
+        message: 'Cancel all registrations before deleting this event.',
+      });
+    }
+
+    await event.deleteOne();
 
     return res.status(200).json({
       message: 'Event deleted successfully.',

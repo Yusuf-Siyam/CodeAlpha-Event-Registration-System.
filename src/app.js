@@ -22,4 +22,17 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    return res.status(400).json({
+      message: 'Invalid JSON request body.',
+    });
+  }
+
+  console.error(`Application error: ${error.message}`);
+  return res.status(500).json({
+    message: 'An unexpected server error occurred.',
+  });
+});
+
 module.exports = app;
