@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
+const dns = require("dns");
+const mongoose = require("mongoose");
 
-const connectDatabase = async () => {
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
+const connectDB = async () => {
   try {
-    if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI is not defined in the environment variables.');
-    }
-
-    const connection = await mongoose.connect(process.env.MONGODB_URI, {
+    await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
     });
-    console.log(`MongoDB connected: ${connection.connection.host}`);
+
+    console.log("MongoDB connected successfully");
   } catch (error) {
-    console.error(`MongoDB connection error: ${error.message}`);
+    console.error("MongoDB connection error:", error.message);
     throw error;
   }
 };
 
-module.exports = connectDatabase;
+module.exports = connectDB;
